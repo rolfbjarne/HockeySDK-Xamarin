@@ -36,15 +36,16 @@ namespace HockeyApp.iOS
 			{
 				if (startedManager) return;
 
-				IntPtr sigbus = Marshal.AllocHGlobal(512);
-				IntPtr sigsegv = Marshal.AllocHGlobal(512);
-
-				// Store Mono SIGSEGV and SIGBUS handlers
-				sigaction(Signal.SIGBUS, IntPtr.Zero, sigbus);
-				sigaction(Signal.SIGSEGV, IntPtr.Zero, sigsegv);
-
-				// Enable crash reporting libraries
-				DoStartManager();
+				try {
+				} finally {
+					Mono.Runtime.RemoveSignalHandlers ();
+					try {
+						// Enable crash reporting libraries
+						DoStartManager();
+					} finally {
+						Mono.Runtime.InstallSignalHandlers ();
+					}
+				}
 
 				AppDomain.CurrentDomain.UnhandledException += (sender, e) => ThrowExceptionAsNative(e.ExceptionObject);
 				TaskScheduler.UnobservedTaskException += (sender, e) => 
@@ -54,13 +55,6 @@ namespace HockeyApp.iOS
 						ThrowExceptionAsNative(e.Exception);
 					}
 				};
-
-				// Restore Mono SIGSEGV and SIGBUS handlers            
-				sigaction(Signal.SIGBUS, sigbus, IntPtr.Zero);
-				sigaction(Signal.SIGSEGV, sigsegv, IntPtr.Zero);
-
-				Marshal.FreeHGlobal(sigbus);
-				Marshal.FreeHGlobal(sigsegv);
 
 				startedManager = true;
 			}
